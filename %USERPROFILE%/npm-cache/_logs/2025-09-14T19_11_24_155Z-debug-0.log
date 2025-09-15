@@ -1,0 +1,33 @@
+0 verbose cli D:\node.exe D:\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.0
+2 info using node@v22.12.0
+3 silly config load:file:D:\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\user\Desktop\health-app\backend\.npmrc
+5 silly config load:file:C:\Users\user\.npmrc
+6 silly config load:file:C:\Users\user\Desktop\health-app\backend\user\npm-global\etc\npmrc
+7 verbose title npm init
+8 verbose argv "init"
+9 verbose logfile logs-max:10 dir:C:\Users\user\Desktop\health-app\backend\%USERPROFILE%\npm-cache\_logs\2025-09-14T19_11_24_155Z-
+10 verbose logfile C:\Users\user\Desktop\health-app\backend\%USERPROFILE%\npm-cache\_logs\2025-09-14T19_11_24_155Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET 200 https://registry.npmjs.org/npm 408ms
+13 silly package data {
+13 silly package data   name: 'backend',
+13 silly package data   version: '1.0.0',
+13 silly package data   main: 'index.js',
+13 silly package data   scripts: { test: 'echo "Error: no test specified" && exit 1' },
+13 silly package data   author: '',
+13 silly package data   license: 'ISC',
+13 silly package data   description: ''
+13 silly package data }
+14 verbose cwd C:\Users\user\Desktop\health-app\backend
+15 verbose os Windows_NT 10.0.26100
+16 verbose node v22.12.0
+17 verbose npm  v10.9.0
+18 notice
+18 notice New [31mmajor[39m version of npm available! [31m10.9.0[39m -> [34m11.6.0[39m
+18 notice Changelog: [34mhttps://github.com/npm/cli/releases/tag/v11.6.0[39m
+18 notice To update run: [4mnpm install -g npm@11.6.0[24m
+18 notice  { force: true, [Symbol(proc-log.meta)]: true }
+19 verbose exit 0
+20 info ok
