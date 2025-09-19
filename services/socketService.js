@@ -1,200 +1,217 @@
-const Patient = require('../models/Patient');
-const Doctor = require('../models/Doctor');
-
-// Store connected users globally
-const connectedUsers = new Map();
+const connectedUsers = new Map(); // Store connected users
+const activeRooms = new Map(); // Store active call rooms
 
 const handleSocketConnection = (io, socket) => {
   console.log('🔌 User connected:', socket.id);
 
-  socket.on('register-user', async (data) => {
-    try {
-      console.log('📝 Received registration data:', data);
+  // Register user with their details
+  socket.on('register-user', (data) => {
+    console.log('📝 Registering user:', data);
+    
+    const { userId, userType, userName } = data;
+    
+    // Store user information
+    connectedUsers.set(userId, {
+      socketId: socket.id,
+      userType: userType,
+      userName: userName,
+      isOnline: true,
+      lastSeen: new Date()
+    });
+    
+    // Join user to their personal room
+    socket.join(`user_${userId}`);
+    
+    console.log('✅ User registered:', userName, 'as', userType);
+    socket.emit('user-registered', { 
+      message: 'Registration successful',
+      userId,
+      userType 
+    });
+    
+    // Broadcast online status if doctor
+    if (userType === 'doctor') {
+      socket.broadcast.emit('doctor-status-changed', {
+        doctorId: userId,
+        isOnline: true,
+        userName: userName
+      });
+    }
+  });
+
+  // Handle call initiation
+  socket.on('initiate-call', (data) => {
+    console.log('📞 Call initiated:', data);
+    
+    const { targetUserId, fromUserId, fromUserName, fromUserType } = data;
+    
+    // Check if target user is connected
+    const targetUser = connectedUsers.get(targetUserId);
+    
+    if (!targetUser) {
+      console.log('❌ Target user not online:', targetUserId);
+      socket.emit('call-failed', {
+        reason: 'User is not online',
+        targetUserId
+      });
+      return;
+    }
+    
+    // Create call room
+    const callRoomId = `call_${fromUserId}_${targetUserId}_${Date.now()}`;
+    
+    // Store call information
+    activeRooms.set(callRoomId, {
+      initiator: fromUserId,
+      receiver: targetUserId,
+      status: 'ringing',
+      createdAt: new Date()
+    });
+    
+    // Send incoming call to target user
+    io.to(`user_${targetUserId}`).emit('incoming-call', {
+      callRoomId,
+      fromUserId,
+      fromUserName,
+      fromUserType,
+      timestamp: new Date()
+    });
+    
+    // Confirm call initiated to sender
+    socket.emit('call-initiated', {
+      callRoomId,
+      targetUserId,
+      targetUserName: targetUser.userName,
+      status: 'ringing'
+    });
+    
+    console.log('✅ Call setup complete:', callRoomId);
+  });
+
+  // Handle call response (accept/reject)
+  socket.on('call-response', (data) => {
+    console.log('📞 Call response:', data);
+    
+    const { callRoomId, response, userId } = data; // response: 'accept' or 'reject'
+    const callInfo = activeRooms.get(callRoomId);
+    
+    if (!callInfo) {
+      console.log('❌ Call not found:', callRoomId);
+      return;
+    }
+    
+    if (response === 'accept') {
+      // Update call status
+      callInfo.status = 'connected';
+      activeRooms.set(callRoomId, callInfo);
       
-      const { userId, userType } = data;
-      
-      if (!userId) {
-        console.error('❌ Missing userId in registration');
-        socket.emit('registration-error', { message: 'Missing userId' });
-        return;
+      // Join both users to call room
+      socket.join(callRoomId);
+      const initiatorUser = connectedUsers.get(callInfo.initiator);
+      if (initiatorUser) {
+        io.sockets.sockets.get(initiatorUser.socketId)?.join(callRoomId);
       }
       
-      if (!userType) {
-        console.error('❌ Missing userType in registration');
-        socket.emit('registration-error', { message: 'Missing userType' });
-        return;
-      }
+      // Notify both users that call is accepted
+      io.to(callRoomId).emit('call-accepted', {
+        callRoomId,
+        participants: [callInfo.initiator, callInfo.receiver]
+      });
       
-      console.log('📝 Registering user:', userId.substring(0, 20) + '...', 'as', userType);
-      
-      let user;
-      if (userType === 'patient') {
-        user = await Patient.findOneAndUpdate(
-          { clerkUserId: userId },
-          { 
-            isOnline: true, 
-            socketId: socket.id, 
-            lastSeen: new Date() 
-          },
-          { new: true }
-        );
-      } else if (userType === 'doctor') {
-        user = await Doctor.findOneAndUpdate(
-          { clerkUserId: userId },
-          { 
-            isOnline: true, 
-            socketId: socket.id, 
-            lastSeen: new Date() 
-          },
-          { new: true }
-        );
-      } else {
-        console.error('❌ Invalid userType:', userType);
-        socket.emit('registration-error', { message: 'Invalid userType. Must be "patient" or "doctor"' });
-        return;
-      }
-      
-      if (user) {
-        connectedUsers.set(user._id.toString(), {
-          socketId: socket.id,
-          userId: user._id.toString(),
-          clerkUserId: userId,
-          userType,
-          userData: user
+      console.log('✅ Call accepted:', callRoomId);
+    } else {
+      // Call rejected
+      const initiatorUser = connectedUsers.get(callInfo.initiator);
+      if (initiatorUser) {
+        io.to(`user_${callInfo.initiator}`).emit('call-rejected', {
+          callRoomId,
+          rejectedBy: userId
         });
+      }
+      
+      // Remove call from active rooms
+      activeRooms.delete(callRoomId);
+      console.log('❌ Call rejected:', callRoomId);
+    }
+  });
+
+  // Handle call end
+  socket.on('end-call', (data) => {
+    console.log('📞 Call ended:', data);
+    
+    const { callRoomId } = data;
+    const callInfo = activeRooms.get(callRoomId);
+    
+    if (callInfo) {
+      // Notify all participants that call ended
+      io.to(callRoomId).emit('call-ended', {
+        callRoomId,
+        endedBy: data.userId
+      });
+      
+      // Remove call from active rooms
+      activeRooms.delete(callRoomId);
+    }
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
+    
+    // Find and remove user from connected users
+    for (const [userId, userInfo] of connectedUsers.entries()) {
+      if (userInfo.socketId === socket.id) {
+        userInfo.isOnline = false;
+        userInfo.lastSeen = new Date();
         
-        socket.userId = user._id.toString();
-        socket.clerkUserId = userId;
-        socket.userType = userType;
-        
-        console.log(`✅ ${userType} ${user.name} registered with socket ${socket.id}`);
-        
-        socket.emit('user-registered', {
-          userId: user._id.toString(),
-          userType,
-          userName: user.name,
-          message: 'Successfully registered'
-        });
-        
-        // Broadcast status change (only for doctors)
-        if (userType === 'doctor') {
+        // Broadcast offline status if doctor
+        if (userInfo.userType === 'doctor') {
           socket.broadcast.emit('doctor-status-changed', {
-            doctorId: user._id.toString(),
-            isOnline: true
+            doctorId: userId,
+            isOnline: false,
+            userName: userInfo.userName
           });
         }
-      } else {
-        console.log('❌ User profile not found for:', userId.substring(0, 20) + '...');
-        socket.emit('registration-error', { 
-          message: `${userType} profile not found. Please complete your profile setup first.` 
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error registering user:', error);
-      socket.emit('registration-error', { 
-        message: 'Registration failed: ' + error.message 
-      });
-    }
-  });
-
-  // Rest of the socket events remain the same...
-  socket.on('initiate-call', async (data) => {
-    console.log('📞 Call initiation request:', data);
-    
-    if (!socket.userId) {
-      socket.emit('error', { message: 'Please register first' });
-      return;
-    }
-    
-    const targetUser = connectedUsers.get(data.targetUserId);
-    if (!targetUser) {
-      socket.emit('user-not-available', { 
-        message: 'User is not available',
-        targetUserId: data.targetUserId 
-      });
-      return;
-    }
-    
-    try {
-      const callerData = connectedUsers.get(socket.userId);
-      const callData = {
-        fromUserId: socket.userId,
-        fromUserName: callerData.userData.name,
-        fromUserAvatar: callerData.userData.getAvatarUrl(),
-        fromUserType: socket.userType
-      };
-      
-      console.log(`📞 Sending call to ${targetUser.userData.name}`);
-      io.to(targetUser.socketId).emit('incoming-call', callData);
-      
-      socket.emit('call-initiated', {
-        targetUserId: data.targetUserId,
-        targetUserName: targetUser.userData.name
-      });
-      
-    } catch (error) {
-      console.error('❌ Error initiating call:', error);
-      socket.emit('error', { message: 'Failed to initiate call' });
-    }
-  });
-
-  socket.on('calling', (message) => {
-    const targetUser = connectedUsers.get(message.targetUserId);
-    if (targetUser) {
-      const messageWithSender = { ...message, fromUserId: socket.userId };
-      io.to(targetUser.socketId).emit('calling', messageWithSender);
-    }
-  });
-
-  socket.on('call-response', (data) => {
-    const targetUser = connectedUsers.get(data.targetUserId);
-    if (targetUser) {
-      io.to(targetUser.socketId).emit('call-response', {
-        ...data,
-        fromUserId: socket.userId
-      });
-    }
-  });
-
-  socket.on('disconnect', async () => {
-    console.log('🔌 User disconnecting:', socket.id);
-    
-    if (socket.userId) {
-      try {
-        const userData = connectedUsers.get(socket.userId);
         
-        if (userData) {
-          if (userData.userType === 'patient') {
-            await Patient.findByIdAndUpdate(socket.userId, {
-              isOnline: false,
-              socketId: null,
-              lastSeen: new Date()
-            });
-          } else if (userData.userType === 'doctor') {
-            await Doctor.findByIdAndUpdate(socket.userId, {
-              isOnline: false,
-              socketId: null,
-              lastSeen: new Date()
-            });
-            
-            // Broadcast doctor offline status
-            socket.broadcast.emit('doctor-status-changed', {
-              doctorId: socket.userId,
-              isOnline: false
-            });
-          }
-          
-          connectedUsers.delete(socket.userId);
-          console.log(`❌ ${userData.userType} ${userData.userData.name} disconnected`);
-        }
-      } catch (error) {
-        console.error('❌ Error updating user offline status:', error);
+        connectedUsers.delete(userId);
+        break;
       }
     }
   });
+
+  // Handle typing indicators for chat during call
+  socket.on('typing', (data) => {
+    socket.to(data.callRoomId).emit('user-typing', {
+      userId: data.userId,
+      userName: data.userName
+    });
+  });
+
+  socket.on('stop-typing', (data) => {
+    socket.to(data.callRoomId).emit('user-stopped-typing', {
+      userId: data.userId
+    });
+  });
+};
+
+// Helper function to get online users
+const getOnlineUsers = () => {
+  return Array.from(connectedUsers.entries()).map(([userId, userInfo]) => ({
+    userId,
+    ...userInfo
+  }));
+};
+
+// Helper function to get active calls
+const getActiveCalls = () => {
+  return Array.from(activeRooms.entries()).map(([callRoomId, callInfo]) => ({
+    callRoomId,
+    ...callInfo
+  }));
 };
 
 module.exports = {
   handleSocketConnection,
-  connectedUsers
+  getOnlineUsers,
+  getActiveCalls
 };
