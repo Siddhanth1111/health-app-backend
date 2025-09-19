@@ -13,7 +13,7 @@ const authRoutes = require('./routes/auth');
 const doctorRoutes = require('./routes/doctors');
 const patientRoutes = require('./routes/patients');
 const consultationRoutes = require('./routes/consultations');
-const testRoutes = require('./routes/test'); // ADD THIS LINE
+const testRoutes = require('./routes/test');
 
 // Import services
 const { handleSocketConnection } = require('./services/socketService');
@@ -50,7 +50,7 @@ app.use('/api', authRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/consultations', consultationRoutes);
-app.use('/api/test', testRoutes); // ADD THIS LINE
+app.use('/api/test', testRoutes);
 
 // Socket connection handler
 io.on('connection', (socket) => {
@@ -78,8 +78,9 @@ app.use('*', (req, res) => {
   });
 });
 
+// ✅ Use Render’s assigned PORT in production, fallback to 3000 locally
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🏥 Medical Consultation Server running on http://localhost:${PORT}`);
+  console.log(`🏥 Medical Consultation Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
