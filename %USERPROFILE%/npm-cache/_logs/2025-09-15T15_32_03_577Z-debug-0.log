@@ -1,0 +1,276 @@
+0 verbose cli D:\node.exe D:\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.0
+2 info using node@v22.12.0
+3 silly config load:file:D:\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\user\Desktop\health-app\backend\.npmrc
+5 silly config load:file:C:\Users\user\.npmrc
+6 silly config load:file:C:\Users\user\Desktop\health-app\backend\user\npm-global\etc\npmrc
+7 verbose title npm install @clerk/clerk-react
+8 verbose argv "install" "@clerk/clerk-react"
+9 verbose logfile logs-max:10 dir:C:\Users\user\Desktop\health-app\backend\%USERPROFILE%\npm-cache\_logs\2025-09-15T15_32_03_577Z-
+10 verbose logfile C:\Users\user\Desktop\health-app\backend\%USERPROFILE%\npm-cache\_logs\2025-09-15T15_32_03_577Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 silly idealTree buildDeps
+14 silly fetch manifest @clerk/clerk-react@*
+15 silly packumentCache full:https://registry.npmjs.org/@clerk%2fclerk-react cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/@clerk%2fclerk-react 828ms (cache miss)
+17 silly packumentCache full:https://registry.npmjs.org/@clerk%2fclerk-react set size:undefined disposed:false
+18 silly placeDep ROOT @clerk/clerk-react@5.47.0 OK for: backend@1.0.0 want: *
+19 silly fetch manifest tslib@2.8.1
+20 silly packumentCache full:https://registry.npmjs.org/tslib cache-miss
+21 silly fetch manifest @clerk/shared@^3.25.0
+22 silly packumentCache full:https://registry.npmjs.org/@clerk%2fshared cache-miss
+23 silly fetch manifest @clerk/types@^4.86.0
+24 silly packumentCache full:https://registry.npmjs.org/@clerk%2ftypes cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/tslib 49ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/tslib set size:undefined disposed:false
+27 http fetch GET 200 https://registry.npmjs.org/@clerk%2fshared 1493ms (cache miss)
+28 silly packumentCache full:https://registry.npmjs.org/@clerk%2fshared set size:undefined disposed:false
+29 http fetch GET 200 https://registry.npmjs.org/@clerk%2ftypes 4703ms (cache miss)
+30 silly packumentCache full:https://registry.npmjs.org/@clerk%2ftypes set size:undefined disposed:false
+31 silly placeDep ROOT @clerk/shared@3.25.0 OK for: @clerk/clerk-react@5.47.0 want: ^3.25.0
+32 silly placeDep ROOT @clerk/types@4.86.0 OK for: @clerk/clerk-react@5.47.0 want: ^4.86.0
+33 silly placeDep ROOT tslib@2.8.1 OK for: @clerk/clerk-react@5.47.0 want: 2.8.1
+34 silly fetch manifest dequal@2.0.3
+35 silly packumentCache full:https://registry.npmjs.org/dequal cache-miss
+36 silly fetch manifest glob-to-regexp@0.4.1
+37 silly packumentCache full:https://registry.npmjs.org/glob-to-regexp cache-miss
+38 silly fetch manifest js-cookie@3.0.5
+39 silly packumentCache full:https://registry.npmjs.org/js-cookie cache-miss
+40 silly fetch manifest std-env@^3.9.0
+41 silly packumentCache full:https://registry.npmjs.org/std-env cache-miss
+42 silly fetch manifest swr@2.3.4
+43 silly packumentCache full:https://registry.npmjs.org/swr cache-miss
+44 silly fetch manifest csstype@3.1.3
+45 silly packumentCache full:https://registry.npmjs.org/csstype cache-miss
+46 http fetch GET 200 https://registry.npmjs.org/js-cookie 48ms (cache miss)
+47 silly packumentCache full:https://registry.npmjs.org/js-cookie set size:undefined disposed:false
+48 http fetch GET 200 https://registry.npmjs.org/glob-to-regexp 51ms (cache miss)
+49 silly packumentCache full:https://registry.npmjs.org/glob-to-regexp set size:undefined disposed:false
+50 http fetch GET 200 https://registry.npmjs.org/csstype 108ms (cache miss)
+51 silly packumentCache full:https://registry.npmjs.org/csstype set size:undefined disposed:false
+52 http fetch GET 200 https://registry.npmjs.org/swr 348ms (cache miss)
+53 silly packumentCache full:https://registry.npmjs.org/swr set size:undefined disposed:false
+54 http fetch GET 200 https://registry.npmjs.org/dequal 634ms (cache miss)
+55 silly packumentCache full:https://registry.npmjs.org/dequal set size:undefined disposed:false
+56 http fetch GET 200 https://registry.npmjs.org/std-env 858ms (cache miss)
+57 silly packumentCache full:https://registry.npmjs.org/std-env set size:undefined disposed:false
+58 silly placeDep ROOT dequal@2.0.3 OK for: @clerk/shared@3.25.0 want: 2.0.3
+59 silly placeDep ROOT glob-to-regexp@0.4.1 OK for: @clerk/shared@3.25.0 want: 0.4.1
+60 silly placeDep ROOT js-cookie@3.0.5 OK for: @clerk/shared@3.25.0 want: 3.0.5
+61 silly placeDep ROOT std-env@3.9.0 OK for: @clerk/shared@3.25.0 want: ^3.9.0
+62 silly placeDep ROOT swr@2.3.4 OK for: @clerk/shared@3.25.0 want: 2.3.4
+63 silly fetch manifest use-sync-external-store@^1.4.0
+64 silly packumentCache full:https://registry.npmjs.org/use-sync-external-store cache-miss
+65 http fetch GET 200 https://registry.npmjs.org/use-sync-external-store 594ms (cache miss)
+66 silly packumentCache full:https://registry.npmjs.org/use-sync-external-store set size:undefined disposed:false
+67 silly placeDep ROOT csstype@3.1.3 OK for: @clerk/types@4.86.0 want: 3.1.3
+68 silly placeDep ROOT use-sync-external-store@1.5.0 OK for: swr@2.3.4 want: ^1.4.0
+69 silly reify moves {}
+70 silly audit bulk request {
+70 silly audit   '@mongodb-js/saslprep': [ '1.3.0' ],
+70 silly audit   '@socket.io/component-emitter': [ '3.1.2' ],
+70 silly audit   '@types/cors': [ '2.8.19' ],
+70 silly audit   '@types/node': [ '24.4.0' ],
+70 silly audit   '@types/webidl-conversions': [ '7.0.3' ],
+70 silly audit   '@types/whatwg-url': [ '8.2.2' ],
+70 silly audit   accepts: [ '1.3.8' ],
+70 silly audit   anymatch: [ '3.1.3' ],
+70 silly audit   'array-flatten': [ '1.1.1' ],
+70 silly audit   'balanced-match': [ '1.0.2' ],
+70 silly audit   base64id: [ '2.0.0' ],
+70 silly audit   bcryptjs: [ '2.4.3' ],
+70 silly audit   'binary-extensions': [ '2.3.0' ],
+70 silly audit   'body-parser': [ '1.20.3' ],
+70 silly audit   debug: [ '2.6.9', '4.4.3', '4.3.7' ],
+70 silly audit   ms: [ '2.0.0', '2.1.3' ],
+70 silly audit   'brace-expansion': [ '1.1.12' ],
+70 silly audit   braces: [ '3.0.3' ],
+70 silly audit   bson: [ '5.5.1' ],
+70 silly audit   'buffer-equal-constant-time': [ '1.0.1' ],
+70 silly audit   bytes: [ '3.1.2' ],
+70 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+70 silly audit   'call-bound': [ '1.0.4' ],
+70 silly audit   chokidar: [ '3.6.0' ],
+70 silly audit   'concat-map': [ '0.0.1' ],
+70 silly audit   'content-disposition': [ '0.5.4' ],
+70 silly audit   'content-type': [ '1.0.5' ],
+70 silly audit   cookie: [ '0.7.2', '0.7.1' ],
+70 silly audit   'cookie-signature': [ '1.0.6' ],
+70 silly audit   cors: [ '2.8.5' ],
+70 silly audit   depd: [ '2.0.0' ],
+70 silly audit   destroy: [ '1.2.0' ],
+70 silly audit   dotenv: [ '16.6.1' ],
+70 silly audit   'dunder-proto': [ '1.0.1' ],
+70 silly audit   'ecdsa-sig-formatter': [ '1.0.11' ],
+70 silly audit   'ee-first': [ '1.1.1' ],
+70 silly audit   encodeurl: [ '2.0.0', '1.0.2' ],
+70 silly audit   'engine.io': [ '6.6.4' ],
+70 silly audit   'engine.io-parser': [ '5.2.3' ],
+70 silly audit   'es-define-property': [ '1.0.1' ],
+70 silly audit   'es-errors': [ '1.3.0' ],
+70 silly audit   'es-object-atoms': [ '1.1.1' ],
+70 silly audit   'escape-html': [ '1.0.3' ],
+70 silly audit   etag: [ '1.8.1' ],
+70 silly audit   express: [ '4.21.2' ],
+70 silly audit   'express-validator': [ '7.2.1' ],
+70 silly audit   'fill-range': [ '7.1.1' ],
+70 silly audit   finalhandler: [ '1.3.1' ],
+70 silly audit   forwarded: [ '0.2.0' ],
+70 silly audit   fresh: [ '0.5.2' ],
+70 silly audit   fsevents: [ '2.3.3' ],
+70 silly audit   'function-bind': [ '1.1.2' ],
+70 silly audit   'get-intrinsic': [ '1.3.0' ],
+70 silly audit   'get-proto': [ '1.0.1' ],
+70 silly audit   'glob-parent': [ '5.1.2' ],
+70 silly audit   gopd: [ '1.2.0' ],
+70 silly audit   'has-flag': [ '3.0.0' ],
+70 silly audit   'has-symbols': [ '1.1.0' ],
+70 silly audit   hasown: [ '2.0.2' ],
+70 silly audit   'http-errors': [ '2.0.0' ],
+70 silly audit   'iconv-lite': [ '0.4.24' ],
+70 silly audit   'ignore-by-default': [ '1.0.1' ],
+70 silly audit   inherits: [ '2.0.4' ],
+70 silly audit   'ip-address': [ '10.0.1' ],
+70 silly audit   'ipaddr.js': [ '1.9.1' ],
+70 silly audit   'is-binary-path': [ '2.1.0' ],
+70 silly audit   'is-extglob': [ '2.1.1' ],
+70 silly audit   'is-glob': [ '4.0.3' ],
+70 silly audit   'is-number': [ '7.0.0' ],
+70 silly audit   jsonwebtoken: [ '9.0.2' ],
+70 silly audit   jwa: [ '1.4.2' ],
+70 silly audit   jws: [ '3.2.2' ],
+70 silly audit   kareem: [ '2.5.1' ],
+70 silly audit   lodash: [ '4.17.21' ],
+70 silly audit   'lodash.includes': [ '4.3.0' ],
+70 silly audit   'lodash.isboolean': [ '3.0.3' ],
+70 silly audit   'lodash.isinteger': [ '4.0.4' ],
+70 silly audit   'lodash.isnumber': [ '3.0.3' ],
+70 silly audit   'lodash.isplainobject': [ '4.0.6' ],
+70 silly audit   'lodash.isstring': [ '4.0.1' ],
+70 silly audit   'lodash.once': [ '4.1.1' ],
+70 silly audit   'math-intrinsics': [ '1.1.0' ],
+70 silly audit   'media-typer': [ '0.3.0' ],
+70 silly audit   'memory-pager': [ '1.5.0' ],
+70 silly audit   'merge-descriptors': [ '1.0.3' ],
+70 silly audit   methods: [ '1.1.2' ],
+70 silly audit   mime: [ '1.6.0' ],
+70 silly audit   'mime-db': [ '1.52.0' ],
+70 silly audit   'mime-types': [ '2.1.35' ],
+70 silly audit   minimatch: [ '3.1.2' ],
+70 silly audit   mongodb: [ '5.9.2' ],
+70 silly audit   'mongodb-connection-string-url': [ '2.6.0' ],
+70 silly audit   mongoose: [ '7.8.7' ],
+70 silly audit   mpath: [ '0.9.0' ],
+70 silly audit   mquery: [ '5.0.0' ],
+70 silly audit   negotiator: [ '0.6.3' ],
+70 silly audit   nodemon: [ '3.1.10' ],
+70 silly audit   'normalize-path': [ '3.0.0' ],
+70 silly audit   'object-assign': [ '4.1.1' ],
+70 silly audit   'object-inspect': [ '1.13.4' ],
+70 silly audit   'on-finished': [ '2.4.1' ],
+70 silly audit   parseurl: [ '1.3.3' ],
+70 silly audit   'path-to-regexp': [ '0.1.12' ],
+70 silly audit   picomatch: [ '2.3.1' ],
+70 silly audit   'proxy-addr': [ '2.0.7' ],
+70 silly audit   'pstree.remy': [ '1.1.8' ],
+70 silly audit   punycode: [ '2.3.1' ],
+70 silly audit   qs: [ '6.13.0' ],
+70 silly audit   'range-parser': [ '1.2.1' ],
+70 silly audit   'raw-body': [ '2.5.2' ],
+70 silly audit   readdirp: [ '3.6.0' ],
+70 silly audit   'safe-buffer': [ '5.2.1' ],
+70 silly audit   'safer-buffer': [ '2.1.2' ],
+70 silly audit   semver: [ '7.7.2' ],
+70 silly audit   send: [ '0.19.0' ],
+70 silly audit   'serve-static': [ '1.16.2' ],
+70 silly audit   setprototypeof: [ '1.2.0' ],
+70 silly audit   'side-channel': [ '1.1.0' ],
+70 silly audit   'side-channel-list': [ '1.0.0' ],
+70 silly audit   'side-channel-map': [ '1.0.1' ],
+70 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+70 silly audit   sift: [ '16.0.1' ],
+70 silly audit   'simple-update-notifier': [ '2.0.0' ],
+70 silly audit   'smart-buffer': [ '4.2.0' ],
+70 silly audit   'socket.io': [ '4.8.1' ],
+70 silly audit   'socket.io-adapter': [ '2.5.5' ],
+70 silly audit   'socket.io-parser': [ '4.2.4' ],
+70 silly audit   socks: [ '2.8.7' ],
+70 silly audit   'sparse-bitfield': [ '3.0.3' ],
+70 silly audit   statuses: [ '2.0.1' ],
+70 silly audit   'supports-color': [ '5.5.0' ],
+70 silly audit   'to-regex-range': [ '5.0.1' ],
+70 silly audit   toidentifier: [ '1.0.1' ],
+70 silly audit   touch: [ '3.1.1' ],
+70 silly audit   tr46: [ '3.0.0' ],
+70 silly audit   'type-is': [ '1.6.18' ],
+70 silly audit   undefsafe: [ '2.0.5' ],
+70 silly audit   'undici-types': [ '7.11.0' ],
+70 silly audit   unpipe: [ '1.0.0' ],
+70 silly audit   'utils-merge': [ '1.0.1' ],
+70 silly audit   validator: [ '13.12.0' ],
+70 silly audit   vary: [ '1.1.2' ],
+70 silly audit   'webidl-conversions': [ '7.0.0' ],
+70 silly audit   'whatwg-url': [ '11.0.0' ],
+70 silly audit   ws: [ '8.17.1' ],
+70 silly audit   '@clerk/clerk-react': [ '5.47.0' ],
+70 silly audit   '@clerk/shared': [ '3.25.0' ],
+70 silly audit   '@clerk/types': [ '4.86.0' ],
+70 silly audit   tslib: [ '2.8.1' ],
+70 silly audit   dequal: [ '2.0.3' ],
+70 silly audit   'glob-to-regexp': [ '0.4.1' ],
+70 silly audit   'js-cookie': [ '3.0.5' ],
+70 silly audit   'std-env': [ '3.9.0' ],
+70 silly audit   swr: [ '2.3.4' ],
+70 silly audit   csstype: [ '3.1.3' ],
+70 silly audit   'use-sync-external-store': [ '1.5.0' ]
+70 silly audit }
+71 verbose reify failed optional dependency C:\Users\user\Desktop\health-app\backend\node_modules\fsevents
+72 silly reify mark deleted [
+72 silly reify   'C:\\Users\\user\\Desktop\\health-app\\backend\\node_modules\\fsevents'
+72 silly reify ]
+73 silly tarball no local data for csstype@https://registry.npmjs.org/csstype/-/csstype-3.1.3.tgz. Extracting by manifest.
+74 silly tarball no local data for use-sync-external-store@https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.5.0.tgz. Extracting by manifest.
+75 silly tarball no local data for glob-to-regexp@https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz. Extracting by manifest.
+76 silly tarball no local data for swr@https://registry.npmjs.org/swr/-/swr-2.3.4.tgz. Extracting by manifest.
+77 silly tarball no local data for @clerk/clerk-react@https://registry.npmjs.org/@clerk/clerk-react/-/clerk-react-5.47.0.tgz. Extracting by manifest.
+78 silly tarball no local data for std-env@https://registry.npmjs.org/std-env/-/std-env-3.9.0.tgz. Extracting by manifest.
+79 silly tarball no local data for tslib@https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz. Extracting by manifest.
+80 silly tarball no local data for js-cookie@https://registry.npmjs.org/js-cookie/-/js-cookie-3.0.5.tgz. Extracting by manifest.
+81 silly tarball no local data for dequal@https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz. Extracting by manifest.
+82 silly tarball no local data for @clerk/types@https://registry.npmjs.org/@clerk/types/-/types-4.86.0.tgz. Extracting by manifest.
+83 silly tarball no local data for @clerk/shared@https://registry.npmjs.org/@clerk/shared/-/shared-3.25.0.tgz. Extracting by manifest.
+84 http fetch GET 200 https://registry.npmjs.org/js-cookie/-/js-cookie-3.0.5.tgz 100ms (cache miss)
+85 http fetch GET 200 https://registry.npmjs.org/csstype/-/csstype-3.1.3.tgz 111ms (cache miss)
+86 http fetch GET 200 https://registry.npmjs.org/@clerk/clerk-react/-/clerk-react-5.47.0.tgz 169ms (cache miss)
+87 http fetch GET 200 https://registry.npmjs.org/std-env/-/std-env-3.9.0.tgz 323ms (cache miss)
+88 http fetch GET 200 https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz 326ms (cache miss)
+89 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 684ms
+90 silly audit report {}
+91 http fetch GET 200 https://registry.npmjs.org/@clerk/types/-/types-4.86.0.tgz 978ms (cache miss)
+92 http fetch GET 200 https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz 1170ms (cache miss)
+93 http fetch GET 200 https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz 1457ms (cache miss)
+94 http fetch GET 200 https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.5.0.tgz 2420ms (cache miss)
+95 http fetch GET 200 https://registry.npmjs.org/swr/-/swr-2.3.4.tgz 4862ms (cache miss)
+96 http fetch GET 200 https://registry.npmjs.org/@clerk/shared/-/shared-3.25.0.tgz 5401ms (cache miss)
+97 info run @clerk/shared@3.25.0 postinstall node_modules/@clerk/shared node ./scripts/postinstall.mjs
+98 info run @clerk/shared@3.25.0 postinstall { code: 0, signal: null }
+99 silly ADD node_modules/use-sync-external-store
+100 silly ADD node_modules/csstype
+101 silly ADD node_modules/swr
+102 silly ADD node_modules/std-env
+103 silly ADD node_modules/js-cookie
+104 silly ADD node_modules/glob-to-regexp
+105 silly ADD node_modules/dequal
+106 silly ADD node_modules/tslib
+107 silly ADD node_modules/@clerk/types
+108 silly ADD node_modules/@clerk/shared
+109 silly ADD node_modules/@clerk/clerk-react
+110 silly ADD
+111 verbose cwd C:\Users\user\Desktop\health-app\backend
+112 verbose os Windows_NT 10.0.26100
+113 verbose node v22.12.0
+114 verbose npm  v10.9.0
+115 verbose exit 0
+116 info ok
