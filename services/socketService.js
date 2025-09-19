@@ -26,19 +26,63 @@ const handleSocketConnection = (io, socket) => {
 
       if (userType === 'patient') {
         dbUser = await Patient.findOne({ clerkUserId: userId });
-        dbUserId = dbUser?._id.toString();
+        if (!dbUser) {
+          // Create patient profile if it doesn't exist
+          console.log('📝 Creating new patient profile for:', userName);
+          dbUser = new Patient({
+            clerkUserId: userId,
+            name: userName,
+            email: 'patient@example.com', // You might want to get actual email
+            phone: '',
+            dateOfBirth: null,
+            emergencyContact: {
+              name: '',
+              phone: '',
+              relationship: ''
+            }
+          });
+          await dbUser.save();
+          console.log('✅ Created new patient profile:', dbUser._id);
+        }
+        dbUserId = dbUser._id.toString();
       } else if (userType === 'doctor') {
         dbUser = await Doctor.findOne({ clerkUserId: userId });
-        dbUserId = dbUser?._id.toString();
+        if (!dbUser) {
+          // Create doctor profile if it doesn't exist
+          console.log('📝 Creating new doctor profile for:', userName);
+          dbUser = new Doctor({
+            clerkUserId: userId,
+            name: userName,
+            email: 'doctor@example.com', // You might want to get actual email
+            specialty: 'General Physician',
+            experience: 5,
+            qualifications: ['MBBS'],
+            consultationFee: 50,
+            bio: `Dr. ${userName} is a qualified medical professional`,
+            isVerified: true,
+            availability: {
+              monday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              tuesday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              wednesday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              thursday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              friday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              saturday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00'] },
+              sunday: { isAvailable: false, slots: [] }
+            }
+          });
+          await dbUser.save();
+          console.log('✅ Created new doctor profile:', dbUser._id);
+        }
+        dbUserId = dbUser._id.toString();
       }
 
       if (!dbUser) {
-        console.error('❌ User not found in database:', userId);
-        socket.emit('registration-error', { message: 'User profile not found in database' });
+        console.error('❌ Could not create or find user profile:', userId);
+        socket.emit('registration-error', { message: 'Could not create user profile' });
         return;
       }
 
-      console.log('✅ Found user in database:', dbUser.name, 'DB ID:', dbUserId);
+      console.log('✅ Found/Created user in database:', dbUser.name, 'DB ID:', dbUserId);
 
       // Store user information with both Clerk ID and DB ID
       const userInfo = {
@@ -87,7 +131,7 @@ const handleSocketConnection = (io, socket) => {
       }
 
       // Log all connected users for debugging
-      console.log('📊 Connected users:', Array.from(connectedUsers.keys()));
+      console.log('📊 Connected users count:', connectedUsers.size / 2); // Divided by 2 because we store twice
 
     } catch (error) {
       console.error('❌ Error registering user:', error);
@@ -141,9 +185,76 @@ const handleSocketConnection = (io, socket) => {
     }
     
     // Get caller information
-    const callerUser = connectedUsers.get(fromUserId);
+    let callerUser = connectedUsers.get(fromUserId);
+    
+    // If caller not found, try to register them automatically
     if (!callerUser) {
-      console.error('❌ Caller not found in connected users:', fromUserId);
+      console.log('⚠️ Caller not found in connected users, attempting auto-registration...');
+      
+      try {
+        let dbUser;
+        if (fromUserType === 'patient') {
+          dbUser = await Patient.findOne({ clerkUserId: fromUserId });
+          if (!dbUser) {
+            dbUser = new Patient({
+              clerkUserId: fromUserId,
+              name: fromUserName,
+              email: 'patient@example.com'
+            });
+            await dbUser.save();
+          }
+        } else if (fromUserType === 'doctor') {
+          dbUser = await Doctor.findOne({ clerkUserId: fromUserId });
+          if (!dbUser) {
+            dbUser = new Doctor({
+              clerkUserId: fromUserId,
+              name: fromUserName,
+              email: 'doctor@example.com',
+              specialty: 'General Physician',
+              experience: 5,
+              isVerified: true
+            });
+            await dbUser.save();
+          }
+        }
+
+        if (dbUser) {
+          const userInfo = {
+            socketId: socket.id,
+            clerkUserId: fromUserId,
+            dbUserId: dbUser._id.toString(),
+            userType: fromUserType,
+            userName: fromUserName,
+            isOnline: true,
+            lastSeen: new Date(),
+            dbUser: dbUser
+          };
+
+          connectedUsers.set(fromUserId, userInfo);
+          connectedUsers.set(dbUser._id.toString(), userInfo);
+          
+          socket.userId = fromUserId;
+          socket.dbUserId = dbUser._id.toString();
+          socket.userType = fromUserType;
+          socket.userName = fromUserName;
+          
+          callerUser = userInfo;
+          console.log('✅ Auto-registered caller:', fromUserName);
+          
+          socket.emit('user-registered', { 
+            message: 'Auto-registration successful',
+            userId: fromUserId,
+            dbUserId: dbUser._id.toString(),
+            userType: fromUserType
+          });
+        }
+      } catch (error) {
+        console.error('❌ Auto-registration failed:', error);
+      }
+    }
+
+    if (!callerUser) {
+      console.error('❌ Caller still not found after auto-registration attempt:', fromUserId);
       socket.emit('call-failed', { reason: 'Caller not registered' });
       return;
     }
@@ -190,6 +301,8 @@ const handleSocketConnection = (io, socket) => {
     
     console.log('✅ Call setup complete:', callRoomId);
   });
+
+  // ... rest of your existing handlers (calling, call-response, etc.) ...
 
   // Handle WebRTC calling events (for your VideoCall component)
   socket.on('calling', (data) => {
@@ -360,7 +473,7 @@ const handleSocketConnection = (io, socket) => {
   });
 };
 
-// Helper function to get online users
+// Helper functions
 const getOnlineUsers = () => {
   const users = Array.from(connectedUsers.entries());
   // Only return Clerk ID entries to avoid duplicates
@@ -375,7 +488,6 @@ const getOnlineUsers = () => {
     }));
 };
 
-// Helper function to get active calls
 const getActiveCalls = () => {
   return Array.from(activeRooms.entries()).map(([callRoomId, callInfo]) => ({
     callRoomId,
@@ -386,7 +498,6 @@ const getActiveCalls = () => {
   }));
 };
 
-// Helper function to get connected user by any ID
 const getConnectedUser = (userId) => {
   return connectedUsers.get(userId) || 
     Array.from(connectedUsers.values()).find(u => 
