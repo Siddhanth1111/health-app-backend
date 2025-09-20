@@ -39,11 +39,48 @@ mongoose.connect(MONGODB_URI)
     process.exit(1);
   });
 
-// Routes
+// Simple routes without Clerk auth for now
 app.use('/api/test', require('./routes/test'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/patients', require('./routes/patients'));
-app.use('/api/doctors', require('./routes/doctors'));
+
+// Simplified routes (we'll add auth later)
+const Patient = require('./models/Patient');
+const Doctor = require('./models/Doctor');
+
+// Basic doctor routes
+app.get('/api/doctors', async (req, res) => {
+  try {
+    const doctors = await Doctor.find({ isVerified: true });
+    res.json(doctors);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/doctors/:id', async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) {
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+    res.json(doctor);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Basic user route
+app.get('/api/users/me', async (req, res) => {
+  try {
+    // For now, return a mock response
+    // Later we'll add proper Clerk authentication
+    res.json({ 
+      message: 'User endpoint working',
+      needsOnboarding: false 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Health check route
 app.get('/', (req, res) => {
