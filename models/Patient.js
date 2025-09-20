@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const patientSchema = new mongoose.Schema({
+const PatientSchema = new mongoose.Schema({
   clerkUserId: {
     type: String,
     required: true,
@@ -12,86 +12,47 @@ const patientSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   phone: {
     type: String,
-    required: true
+    default: ''
   },
   dateOfBirth: {
     type: Date,
-    required: true
+    default: null
   },
   gender: {
     type: String,
-    enum: ['Male', 'Female', 'Other'],
-    required: true
+    enum: ['male', 'female', 'other', 'prefer-not-to-say'],
+    default: 'prefer-not-to-say' // Set default value instead of required
   },
   address: {
-    street: String,
-    city: String,
-    state: String,
-    zipCode: String,
-    country: String
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    zipCode: { type: String, default: '' },
+    country: { type: String, default: '' }
   },
   emergencyContact: {
-    name: String,
-    relationship: String,
-    phone: String
+    name: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    relationship: { type: String, default: '' }
   },
-  medicalHistory: [{
-    condition: String,
-    diagnosedDate: Date,
-    notes: String
-  }],
-  allergies: [String],
-  currentMedications: [String],
+  medicalHistory: {
+    allergies: [{ type: String }],
+    medications: [{ type: String }],
+    conditions: [{ type: String }],
+    surgeries: [{ type: String }]
+  },
   avatar: {
     type: String,
     default: function() {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.name)}&background=10b981&color=fff&size=150`;
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(this.name)}&background=4f46e5&color=fff&size=150`;
     }
-  },
-  bloodGroup: {
-    type: String,
-    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-  },
-  height: Number, // in cm
-  weight: Number, // in kg
-  isOnline: {
-    type: Boolean,
-    default: false
-  },
-  socketId: String,
-  lastSeen: {
-    type: Date,
-    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Virtual for avatar URL
-patientSchema.methods.getAvatarUrl = function() {
-  return this.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(this.name)}&background=10b981&color=fff&size=150`;
-};
-
-// Virtual for age
-patientSchema.virtual('age').get(function() {
-  if (!this.dateOfBirth) return null;
-  const today = new Date();
-  const birthDate = new Date(this.dateOfBirth);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  return age;
-});
-
-// Index for efficient querying
-patientSchema.index({ clerkUserId: 1 });
-patientSchema.index({ email: 1 });
-
-module.exports = mongoose.model('Patient', patientSchema);
+module.exports = mongoose.model('Patient', PatientSchema);

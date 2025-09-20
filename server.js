@@ -2,6 +2,15 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 require('dotenv').config();
+// ... existing imports and setup ...
+
+// Import routes
+const testRoutes = require('./routes/test'); // Make sure this exists
+
+// Use routes
+app.use('/api/test', testRoutes); // Make sure this is included
+
+// ... rest of your server code ...
 
 // Import configurations
 const { connectDatabase } = require('./config/database');

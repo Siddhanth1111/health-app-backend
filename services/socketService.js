@@ -14,20 +14,30 @@ const handleSocketConnection = (io, socket) => {
       const { userId, userType, userName } = data;
       console.log('📝 Registering user:', { userId, userType, userName });
 
+      if (!userId || !userType || !userName) {
+        throw new Error('Missing required registration data');
+      }
+
       // Find or create user profile
       let dbUser = null;
+      
       if (userType === 'patient') {
         dbUser = await Patient.findOne({ clerkUserId: userId });
         if (!dbUser) {
+          console.log('Creating new patient profile...');
           dbUser = await Patient.create({
             clerkUserId: userId,
             name: userName,
-            email: `${userId}@temp.com`
+            email: `${userId}@temp.com`,
+            gender: 'prefer-not-to-say', // Explicitly set default
+            phone: '',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=4f46e5&color=fff&size=150`
           });
         }
       } else if (userType === 'doctor') {
         dbUser = await Doctor.findOne({ clerkUserId: userId });
         if (!dbUser) {
+          console.log('Creating new doctor profile...');
           dbUser = await Doctor.create({
             clerkUserId: userId,
             name: userName,
@@ -35,9 +45,25 @@ const handleSocketConnection = (io, socket) => {
             specialty: 'General Physician',
             experience: 5,
             consultationFee: 100,
-            isVerified: true
+            isVerified: true,
+            qualifications: ['MBBS'],
+            bio: `Dr. ${userName} is a qualified medical professional.`,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=10b981&color=fff&size=150`,
+            availability: {
+              monday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              tuesday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              wednesday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              thursday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              friday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'] },
+              saturday: { isAvailable: true, slots: ['09:00', '10:00', '11:00', '14:00', '15:00'] },
+              sunday: { isAvailable: false, slots: [] }
+            }
           });
         }
+      }
+
+      if (!dbUser) {
+        throw new Error('Failed to create or find user profile');
       }
 
       // Store user in memory
@@ -60,7 +86,8 @@ const handleSocketConnection = (io, socket) => {
       socket.emit('registration-success', {
         userId,
         userName: dbUser.name,
-        userType
+        userType,
+        dbId: dbUser._id.toString()
       });
 
       // Notify others if doctor came online
@@ -73,7 +100,9 @@ const handleSocketConnection = (io, socket) => {
 
     } catch (error) {
       console.error('❌ Registration error:', error);
-      socket.emit('registration-error', { message: error.message });
+      socket.emit('registration-error', { 
+        message: error.message || 'Registration failed'
+      });
     }
   });
 
@@ -102,7 +131,7 @@ const handleSocketConnection = (io, socket) => {
       roomId,
       caller: socket.userId,
       callerName: patientName,
-      receiver: doctor.dbId,
+      receiver: doctor.userId || targetDoctorId, // Use the Clerk userId
       receiverName: doctor.userName,
       status: 'ringing',
       createdAt: new Date()
