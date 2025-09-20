@@ -1,95 +1,93 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
 require('dotenv').config();
-// ... existing imports and setup ...
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
-// Import routes
-const testRoutes = require('./routes/test'); // Make sure this exists
-
-// Use routes
-app.use('/api/test', testRoutes); // Make sure this is included
-
-// ... rest of your server code ...
-
-// Import configurations
-const { connectDatabase } = require('./config/database');
-const { configureCors } = require('./middleware/cors');
-const { configureSocket } = require('./config/socket');
-
-// Import routes
-const authRoutes = require('./routes/auth');
-const doctorRoutes = require('./routes/doctors');
-const patientRoutes = require('./routes/patients');
-const consultationRoutes = require('./routes/consultations');
-const testRoutes = require('./routes/test');
-
-// Import services
+// Import socket handler
 const { handleSocketConnection } = require('./services/socketService');
 
 const app = express();
-const server = http.createServer(app);
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
-// Configure CORS
-configureCors(app);
+const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/medical-consultation';
 
-// Parse JSON bodies
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Connect to database
-connectDatabase();
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+  })
+  .catch((error) => {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  });
 
-// Configure Socket.IO
-const io = configureSocket(server);
+// Routes
+app.use('/api/test', require('./routes/test'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/patients', require('./routes/patients'));
+app.use('/api/doctors', require('./routes/doctors'));
 
-// Make io available to routes
-app.set('io', io);
-
-// Health check route (before other routes)
-app.get('/api/test', (req, res) => {
+// Health check route
+app.get('/', (req, res) => {
   res.json({ 
-    message: 'Medical consultation API is working!', 
-    timestamp: new Date().toISOString(),
-    status: 'healthy'
+    message: 'Medical Consultation API Server is running!',
+    status: 'healthy',
+    timestamp: new Date().toISOString()
   });
 });
 
-// API Routes
-app.use('/api', authRoutes);
-app.use('/api/doctors', doctorRoutes);
-app.use('/api/patients', patientRoutes);
-app.use('/api/consultations', consultationRoutes);
-app.use('/api/test', testRoutes);
-
-// Socket connection handler
+// Socket.IO connection handling
 io.on('connection', (socket) => {
   handleSocketConnection(io, socket);
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.stack);
+  console.error('❌ Server error:', err);
   res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: err.message,
-    timestamp: new Date().toISOString()
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  console.log('❌ 404 - Route not found:', req.originalUrl);
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.originalUrl,
-    method: req.method,
-    timestamp: new Date().toISOString()
+// Start server
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 Socket.IO server ready for connections`);
+  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('💤 Process terminated');
+    mongoose.connection.close();
   });
 });
 
-// ✅ Use Render’s assigned PORT in production, fallback to 3000 locally
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🏥 Medical Consultation Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+process.on('SIGINT', () => {
+  console.log('👋 SIGINT received, shutting down gracefully...');
+  server.close(() => {
+    console.log('💤 Process terminated');
+    mongoose.connection.close();
+  });
 });
