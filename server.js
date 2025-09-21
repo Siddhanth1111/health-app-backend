@@ -1,397 +1,521 @@
-require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const http = require('http');
+const socketIo = require('socket.io');
 const cors = require('cors');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
+const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config();
 
+// Import routes
+const appointmentRoutes = require('./routes/appointments');
+const prescriptionRoutes = require('./routes/prescriptions');
+const doctorRoutes = require('./routes/doctors');
+const patientRoutes = require('./routes/patients');
+
+// Import models
+const Appointment = require('./models/Appointment');
+const Doctor = require('./models/Doctor');
+const Patient = require('./models/Patient');
+const Medicine = require('./models/Medicine');
+const Prescription = require('./models/Prescription');
+
+// Initialize Express app
 const app = express();
-const server = createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+const server = http.createServer(app);
 
-const PORT = process.env.PORT || 3000;
+// Socket.IO setup with enhanced configuration
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173", 
+      "http://localhost:5174",
+      "https://health-app-frontend-drab.vercel.app",
+      process.env.FRONTEND_URL
+    ].filter(Boolean),
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+    allowEIO3: true
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174", 
+    "https://health-app-frontend-drab.vercel.app",
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+}));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/medical-consultation')
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Models
-const patientSchema = new mongoose.Schema({
-  clerkUserId: String,
-  name: String,
-  email: String
-}, { timestamps: true });
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-const doctorSchema = new mongoose.Schema({
-  clerkUserId: String,
-  name: String,
-  email: String,
-  specialty: { type: String, default: 'General Physician' },
-  experience: { type: Number, default: 5 },
-  consultationFee: { type: Number, default: 100 },
-  isVerified: { type: Boolean, default: true }
-}, { timestamps: true });
+// Serve static files for prescriptions and uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const appointmentSchema = new mongoose.Schema({
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true },
-  patientClerkId: { type: String, required: true },
-  doctorClerkId: { type: String, required: true },
-  appointmentDate: { type: Date, required: true },
-  appointmentTime: { type: String, required: true },
-  status: { type: String, enum: ['scheduled', 'in-progress', 'completed', 'cancelled'], default: 'scheduled' },
-  reason: { type: String, required: true },
-  consultationFee: { type: Number, required: true },
-  duration: { type: Number, default: 30 },
-  callStarted: { type: Boolean, default: false }
-}, { timestamps: true });
-
-const Patient = mongoose.model('Patient', patientSchema);
-const Doctor = mongoose.model('Doctor', doctorSchema);
-const Appointment = mongoose.model('Appointment', appointmentSchema);
-
-// Simple storage for connected users and calls
-const connectedUsers = new Map();
-const activeCalls = new Map();
-
-// Helper function to check if appointment time is active (±15 minutes)
-const isAppointmentTimeActive = (appointmentDate, appointmentTime) => {
-  const now = new Date();
-  const [hours, minutes] = appointmentTime.split(':');
-  const appointmentDateTime = new Date(appointmentDate);
-  appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-  
-  const timeDifference = Math.abs(now - appointmentDateTime);
-  const fifteenMinutes = 15 * 60 * 1000; // 15 minutes in milliseconds
-  
-  return timeDifference <= fifteenMinutes;
+// MongoDB Connection
+const connectDB = async () => {
+  try {
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/medical-consultation';
+    
+    await mongoose.connect(mongoURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000,
+      heartbeatFrequencyMS: 2000,
+      retryWrites: true,
+      w: 'majority'
+    });
+    
+    console.log('✅ Connected to MongoDB');
+    
+    // Seed medicines if collection is empty
+    const medicineCount = await Medicine.countDocuments();
+    if (medicineCount === 0) {
+      console.log('📊 Seeding medicines database...');
+      const { seedMedicines } = require('./seedMedicines');
+      await seedMedicines();
+    }
+    
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  }
 };
 
-// Socket handling
+// Routes
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/patients', patientRoutes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    services: {
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      socket: 'active'
+    }
+  });
+});
+
+// API info endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    name: 'Medical Consultation Platform API',
+    version: '1.0.0',
+    description: 'Backend API for video consultations with prescription system',
+    features: [
+      'Video call rooms with WebRTC',
+      'In-call prescription creation',
+      'Medicine database with search',
+      'PDF prescription generation',
+      'Appointment scheduling (5 AM - 9 PM)',
+      'Real-time Socket.IO communication'
+    ],
+    endpoints: {
+      appointments: '/api/appointments',
+      prescriptions: '/api/prescriptions',
+      doctors: '/api/doctors',
+      patients: '/api/patients',
+      health: '/health'
+    }
+  });
+});
+
+// Socket.IO connection handling
+const activeRooms = new Map();
+const userSockets = new Map();
+
 io.on('connection', (socket) => {
-  console.log('🔌 User connected:', socket.id);
+  console.log(`🔗 User connected: ${socket.id}`);
 
-  socket.on('register-user', async (data) => {
-    const { userId, userType, userName } = data;
-    console.log('📝 Registering:', userName, 'as', userType);
-    
+  // Join video call room
+  socket.on('join-room', async (data) => {
     try {
-      let dbUser;
-      if (userType === 'patient') {
-        dbUser = await Patient.findOne({ clerkUserId: userId }) || 
-                 await Patient.create({ clerkUserId: userId, name: userName, email: `${userId}@temp.com` });
-      } else if (userType === 'doctor') {
-        dbUser = await Doctor.findOne({ clerkUserId: userId }) || 
-                 await Doctor.create({ 
-                   clerkUserId: userId, 
-                   name: userName, 
-                   email: `${userId}@temp.com`,
-                   specialty: 'General Physician',
-                   experience: 5,
-                   consultationFee: 100,
-                   isVerified: true
-                 });
-      }
-
-      connectedUsers.set(userId, {
-        socketId: socket.id,
-        userName: dbUser.name,
-        userType: userType,
-        dbId: dbUser._id.toString()
+      const { roomId, userId, userType, userName } = data;
+      
+      // Leave any existing rooms
+      socket.rooms.forEach(room => {
+        if (room !== socket.id) {
+          socket.leave(room);
+        }
       });
 
-      socket.userId = userId;
-      socket.userType = userType;
-      socket.join(`user_${userId}`);
-
-      socket.emit('registration-success', { userId, userName: dbUser.name, userType });
+      // Join the new room
+      socket.join(roomId);
       
-      if (userType === 'doctor') {
-        io.emit('doctor-online', { doctorId: dbUser._id.toString(), doctorName: dbUser.name });
+      // Store user information
+      userSockets.set(userId, {
+        socketId: socket.id,
+        roomId,
+        userType,
+        userName,
+        joinedAt: new Date()
+      });
+
+      // Update room information
+      if (!activeRooms.has(roomId)) {
+        activeRooms.set(roomId, {
+          participants: new Map(),
+          createdAt: new Date(),
+          appointmentId: data.appointmentId
+        });
       }
 
-      console.log('✅ Registered successfully:', dbUser.name);
+      const room = activeRooms.get(roomId);
+      room.participants.set(userId, {
+        userId,
+        userType,
+        userName,
+        socketId: socket.id,
+        joinedAt: new Date()
+      });
+
+      console.log(`👥 ${userName} (${userType}) joined room ${roomId}`);
+
+      // Notify other participants
+      socket.to(roomId).emit('user-joined', {
+        userId,
+        userType,
+        userName,
+        participantCount: room.participants.size
+      });
+
+      // Send current room state to the newly joined user
+      socket.emit('room-state', {
+        roomId,
+        participants: Array.from(room.participants.values()),
+        participantCount: room.participants.size
+      });
+
+      // Update appointment status to 'ongoing' if both doctor and patient are present
+      if (room.participants.size >= 2 && data.appointmentId) {
+        try {
+          await Appointment.findOneAndUpdate(
+            { appointmentId: data.appointmentId },
+            { 
+              status: 'ongoing',
+              callStartTime: new Date()
+            }
+          );
+          console.log(`📞 Appointment ${data.appointmentId} marked as ongoing`);
+        } catch (error) {
+          console.error('Error updating appointment status:', error);
+        }
+      }
+
     } catch (error) {
-      console.error('❌ Registration error:', error);
-      socket.emit('registration-error', { message: error.message });
+      console.error('Error joining room:', error);
+      socket.emit('error', { message: 'Failed to join room' });
     }
   });
 
-  // Updated call initiation with appointment check
-  socket.on('initiate-call', async (data) => {
-    const { targetDoctorId, patientName, appointmentId } = data;
-    console.log('📞 Call to doctor:', targetDoctorId, 'with appointment:', appointmentId);
+  // Handle WebRTC signaling
+  socket.on('webrtc-signal', (data) => {
+    const { roomId, signal, type } = data;
+    console.log(`📡 WebRTC signal (${type}) in room ${roomId}`);
+    
+    // Broadcast the signal to other participants in the room
+    socket.to(roomId).emit('webrtc-signal', {
+      signal,
+      type,
+      from: socket.id
+    });
+  });
 
+  // Handle prescription creation during call
+  socket.on('prescription-created', async (data) => {
     try {
-      // Verify appointment exists and is active
-      const appointment = await Appointment.findById(appointmentId)
-        .populate('patientId')
-        .populate('doctorId');
+      const { roomId, prescriptionData, appointmentId } = data;
+      
+      console.log(`💊 Prescription created in room ${roomId}`);
+      
+      // Broadcast to all participants in the room
+      io.to(roomId).emit('prescription-created', {
+        prescriptionId: prescriptionData.prescriptionId,
+        message: 'Prescription has been created and saved',
+        appointmentId
+      });
 
-      if (!appointment) {
-        socket.emit('call-failed', { message: 'Invalid appointment' });
-        return;
+      // Update appointment with prescription ID
+      if (appointmentId) {
+        await Appointment.findOneAndUpdate(
+          { appointmentId },
+          { prescriptionId: prescriptionData.prescriptionId }
+        );
       }
 
-      if (appointment.status !== 'scheduled') {
-        socket.emit('call-failed', { message: 'Appointment is not active' });
-        return;
-      }
+    } catch (error) {
+      console.error('Error handling prescription creation:', error);
+      socket.emit('error', { message: 'Failed to process prescription creation' });
+    }
+  });
 
-      // Check if it's the right time for the appointment
-      if (!isAppointmentTimeActive(appointment.appointmentDate, appointment.appointmentTime)) {
-        socket.emit('call-failed', { message: 'Call only allowed during appointment time (±15 minutes)' });
-        return;
-      }
-
-      // Check if caller is the patient for this appointment
-      if (appointment.patientClerkId !== socket.userId) {
-        socket.emit('call-failed', { message: 'Unauthorized to make this call' });
-        return;
-      }
-
-      const doctor = connectedUsers.get(appointment.doctorClerkId);
-
-      if (!doctor) {
-        socket.emit('call-failed', { message: 'Doctor is not available' });
-        return;
-      }
+  // Handle call end
+  socket.on('end-call', async (data) => {
+    try {
+      const { roomId, appointmentId } = data;
+      
+      console.log(`📵 Call ended in room ${roomId}`);
+      
+      // Notify all participants
+      io.to(roomId).emit('call-ended', {
+        message: 'Call has been ended',
+        endedBy: socket.id,
+        endedAt: new Date()
+      });
 
       // Update appointment status
-      appointment.status = 'in-progress';
-      appointment.callStarted = true;
-      await appointment.save();
-
-      const callId = `call_${Date.now()}`;
-      const roomId = `room_${callId}`;
-      
-      activeCalls.set(callId, {
-        callId, roomId,
-        caller: socket.userId,
-        callerName: patientName,
-        receiver: appointment.doctorClerkId,
-        receiverName: doctor.userName,
-        appointmentId: appointmentId,
-        status: 'ringing'
-      });
-
-      io.to(doctor.socketId).emit('incoming-call', {
-        callId, roomId,
-        callerName: patientName,
-        callerId: socket.userId,
-        appointmentId: appointmentId,
-        appointmentTime: appointment.appointmentTime,
-        reason: appointment.reason
-      });
-
-      socket.emit('call-initiated', { callId, roomId, doctorName: doctor.userName });
-      console.log('✅ Call initiated with appointment:', callId);
-    } catch (error) {
-      console.error('❌ Error initiating call:', error);
-      socket.emit('call-failed', { message: 'Failed to initiate call' });
-    }
-  });
-
-  // Rest of socket handlers remain the same
-  socket.on('respond-to-call', async (data) => {
-    const { callId, accepted } = data;
-    const call = activeCalls.get(callId);
-
-    if (!call) return;
-
-    if (accepted) {
-      call.status = 'active';
-      socket.join(call.roomId);
-      
-      const caller = connectedUsers.get(call.caller);
-      if (caller) {
-        io.sockets.sockets.get(caller.socketId)?.join(call.roomId);
-      }
-
-      io.to(call.roomId).emit('call-accepted', {
-        callId, roomId: call.roomId,
-        participants: {
-          patient: { id: call.caller, name: call.callerName },
-          doctor: { id: call.receiver, name: call.receiverName }
-        }
-      });
-      console.log('✅ Call accepted:', callId);
-    } else {
-      const caller = connectedUsers.get(call.caller);
-      if (caller) {
-        io.to(caller.socketId).emit('call-rejected', { callId, doctorName: call.receiverName });
-      }
-
-      // Reset appointment status if call rejected
-      if (call.appointmentId) {
-        try {
-          await Appointment.findByIdAndUpdate(call.appointmentId, {
-            status: 'scheduled',
-            callStarted: false
-          });
-        } catch (error) {
-          console.error('Error updating appointment on reject:', error);
+      if (appointmentId) {
+        const endTime = new Date();
+        const appointment = await Appointment.findOne({ appointmentId });
+        
+        if (appointment && appointment.callStartTime) {
+          const duration = Math.round((endTime - appointment.callStartTime) / (1000 * 60));
+          
+          await Appointment.findOneAndUpdate(
+            { appointmentId },
+            { 
+              status: 'completed',
+              callEndTime: endTime,
+              callDuration: duration
+            }
+          );
+          
+          console.log(`✅ Appointment ${appointmentId} completed (${duration} minutes)`);
         }
       }
 
-      activeCalls.delete(callId);
-      console.log('❌ Call rejected:', callId);
-    }
-  });
-
-  socket.on('webrtc-signal', (data) => {
-    socket.to(data.roomId).emit('webrtc-signal', {
-      signal: data.signal,
-      type: data.type,
-      from: socket.userId
-    });
-  });
-
-  socket.on('end-call', async (data) => {
-    io.to(data.roomId).emit('call-ended', { callId: data.callId });
-    
-    // Complete the appointment
-    const call = activeCalls.get(data.callId);
-    if (call && call.appointmentId) {
-      try {
-        await Appointment.findByIdAndUpdate(call.appointmentId, {
-          status: 'completed',
-          callEndedAt: new Date()
+      // Clean up room
+      if (activeRooms.has(roomId)) {
+        const room = activeRooms.get(roomId);
+        room.participants.forEach((participant, userId) => {
+          userSockets.delete(userId);
         });
-        console.log('✅ Appointment completed:', call.appointmentId);
-      } catch (error) {
-        console.error('Error updating appointment on end:', error);
+        activeRooms.delete(roomId);
       }
+
+    } catch (error) {
+      console.error('Error ending call:', error);
     }
-    
-    activeCalls.delete(data.callId);
   });
 
+  // Handle chat messages during call
+  socket.on('chat-message', (data) => {
+    const { roomId, message, userId, userName, timestamp } = data;
+    
+    console.log(`💬 Chat message in room ${roomId} from ${userName}`);
+    
+    // Broadcast message to all participants in the room
+    io.to(roomId).emit('chat-message', {
+      message,
+      userId,
+      userName,
+      timestamp: timestamp || new Date(),
+      messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    });
+  });
+
+  // Handle appointment reminders
+  socket.on('appointment-reminder', async (data) => {
+    try {
+      const { appointmentId, type } = data; // type: '15min', '5min', 'now'
+      
+      const appointment = await Appointment.findOne({ appointmentId })
+        .populate('doctorId', 'name')
+        .populate('patientId', 'name');
+
+      if (appointment) {
+        const doctorSocket = userSockets.get(appointment.doctorClerkId);
+        const patientSocket = userSockets.get(appointment.patientClerkId);
+
+        const reminderMessage = {
+          appointmentId,
+          type,
+          doctor: appointment.doctorId.name,
+          patient: appointment.patientId.name,
+          time: appointment.timeSlot,
+          date: appointment.appointmentDate,
+          meetingRoomId: appointment.meetingRoomId
+        };
+
+        if (doctorSocket) {
+          io.to(doctorSocket.socketId).emit('appointment-reminder', reminderMessage);
+        }
+
+        if (patientSocket) {
+          io.to(patientSocket.socketId).emit('appointment-reminder', reminderMessage);
+        }
+
+        console.log(`⏰ Reminder sent for appointment ${appointmentId} (${type})`);
+      }
+
+    } catch (error) {
+      console.error('Error sending appointment reminder:', error);
+    }
+  });
+
+  // Handle disconnection
   socket.on('disconnect', () => {
-    console.log('❌ User disconnected:', socket.id);
-    if (socket.userId) {
-      const user = connectedUsers.get(socket.userId);
-      if (user && user.userType === 'doctor') {
-        io.emit('doctor-offline', { doctorId: user.dbId });
+    console.log(`🔌 User disconnected: ${socket.id}`);
+    
+    // Find and remove user from active sessions
+    let disconnectedUserId = null;
+    let disconnectedRoomId = null;
+
+    userSockets.forEach((userData, userId) => {
+      if (userData.socketId === socket.id) {
+        disconnectedUserId = userId;
+        disconnectedRoomId = userData.roomId;
+        userSockets.delete(userId);
       }
-      connectedUsers.delete(socket.userId);
+    });
+
+    // Remove from active rooms and notify other participants
+    if (disconnectedRoomId && activeRooms.has(disconnectedRoomId)) {
+      const room = activeRooms.get(disconnectedRoomId);
+      
+      if (disconnectedUserId && room.participants.has(disconnectedUserId)) {
+        const participant = room.participants.get(disconnectedUserId);
+        room.participants.delete(disconnectedUserId);
+
+        // Notify remaining participants
+        socket.to(disconnectedRoomId).emit('user-left', {
+          userId: disconnectedUserId,
+          userName: participant.userName,
+          userType: participant.userType,
+          participantCount: room.participants.size
+        });
+
+        console.log(`👋 ${participant.userName} left room ${disconnectedRoomId}`);
+      }
+
+      // Clean up empty rooms
+      if (room.participants.size === 0) {
+        activeRooms.delete(disconnectedRoomId);
+        console.log(`🧹 Cleaned up empty room ${disconnectedRoomId}`);
+      }
     }
+  });
+
+  // Handle connection errors
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
   });
 });
 
-// API Routes
-app.get('/api/doctors', async (req, res) => {
-  try {
-    const doctors = await Doctor.find({ isVerified: true });
-    console.log('📋 Doctors requested, found:', doctors.length);
-    res.json(doctors);
-  } catch (error) {
-    console.error('❌ Error fetching doctors:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+// Periodic cleanup of inactive rooms (every 30 minutes)
+setInterval(() => {
+  const now = new Date();
+  const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
 
-// Appointment Routes
-app.post('/api/appointments', async (req, res) => {
-  try {
-    const { doctorId, patientClerkId, appointmentDate, appointmentTime, reason } = req.body;
-    
-    // Find doctor and patient
-    const doctor = await Doctor.findById(doctorId);
-    const patient = await Patient.findOne({ clerkUserId: patientClerkId });
-    
-    if (!doctor || !patient) {
-      return res.status(404).json({ error: 'Doctor or patient not found' });
+  activeRooms.forEach((room, roomId) => {
+    if (room.createdAt < thirtyMinutesAgo && room.participants.size === 0) {
+      activeRooms.delete(roomId);
+      console.log(`🧹 Cleaned up inactive room ${roomId}`);
     }
+  });
+}, 30 * 60 * 1000);
 
-    // Check for existing appointment at same time
-    const existingAppointment = await Appointment.findOne({
-      doctorId: doctorId,
-      appointmentDate: new Date(appointmentDate),
-      appointmentTime: appointmentTime,
-      status: 'scheduled'
-    });
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('❌ Server error:', err);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
 
-    if (existingAppointment) {
-      return res.status(400).json({ error: 'Time slot already booked' });
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    message: `Route ${req.originalUrl} not found`,
+    availableRoutes: [
+      '/api/appointments',
+      '/api/prescriptions', 
+      '/api/doctors',
+      '/api/patients',
+      '/health'
+    ]
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 SIGTERM received. Shutting down gracefully...');
+  
+  // Close Socket.IO server
+  io.close(() => {
+    console.log('🔌 Socket.IO server closed');
+  });
+
+  // Close HTTP server
+  server.close(async () => {
+    console.log('🌐 HTTP server closed');
+    
+    // Close MongoDB connection
+    try {
+      await mongoose.connection.close();
+      console.log('🗄️ MongoDB connection closed');
+    } catch (error) {
+      console.error('Error closing MongoDB connection:', error);
     }
+    
+    process.exit(0);
+  });
+});
 
-    const appointment = new Appointment({
-      patientId: patient._id,
-      doctorId: doctor._id,
-      patientClerkId: patientClerkId,
-      doctorClerkId: doctor.clerkUserId,
-      appointmentDate: new Date(appointmentDate),
-      appointmentTime,
-      reason,
-      consultationFee: doctor.consultationFee
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received. Shutting down gracefully...');
+  process.emit('SIGTERM');
+});
+
+// Start server
+const PORT = process.env.PORT || 5000;
+
+const startServer = async () => {
+  try {
+    // Connect to database first
+    await connectDB();
+    
+    // Start the server
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌐 API available at http://localhost:${PORT}/api`);
+      console.log(`🏥 Health check at http://localhost:${PORT}/health`);
+      console.log(`📡 Socket.IO ready for connections`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
-
-    await appointment.save();
     
-    const populatedAppointment = await Appointment.findById(appointment._id)
-      .populate('doctorId')
-      .populate('patientId');
-    
-    res.status(201).json(populatedAppointment);
   } catch (error) {
-    console.error('❌ Error creating appointment:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
   }
-});
+};
 
-// Get patient appointments
-app.get('/api/appointments/patient/:patientClerkId', async (req, res) => {
-  try {
-    const appointments = await Appointment.find({ 
-      patientClerkId: req.params.patientClerkId,
-      status: { $in: ['scheduled', 'in-progress'] }
-    })
-    .populate('doctorId')
-    .sort({ appointmentDate: 1, appointmentTime: 1 });
-    
-    res.json(appointments);
-  } catch (error) {
-    console.error('❌ Error fetching patient appointments:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+startServer();
 
-// Get doctor appointments
-app.get('/api/appointments/doctor/:doctorClerkId', async (req, res) => {
-  try {
-    const appointments = await Appointment.find({ 
-      doctorClerkId: req.params.doctorClerkId,
-      status: { $in: ['scheduled', 'in-progress'] }
-    })
-    .populate('patientId')
-    .sort({ appointmentDate: 1, appointmentTime: 1 });
-    
-    res.json(appointments);
-  } catch (error) {
-    console.error('❌ Error fetching doctor appointments:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/users/me', (req, res) => {
-  res.json({ needsOnboarding: false });
-});
-
-app.get('/', (req, res) => {
-  res.json({ message: 'Medical Consultation API is running!' });
-});
-
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+module.exports = { app, server, io };
